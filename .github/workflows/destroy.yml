@@ -1,0 +1,124 @@
+name: tf-destroy-gcp
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Select 'plan' to create/upload a destroy plan; 'apply' to execute a previously uploaded destroy plan."
+        required: true
+        type: choice
+        default: plan
+        options:
+          - plan
+          - apply
+      destroy_commit_sha:
+        description: "When mode=apply, which commit's destroy plan to use (defaults to current SHA if blank)."
+        required: false
+        default: ""
+      confirm:
+        description: "Type DESTROY to confirm when running mode=apply."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  PLAN_BUCKET: tf-plan-bucket-zaf-gcp
+  DESTROY_SUBPATH: destroy
+
+jobs:
+  tf-destroy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup GCP credentials
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          service_account_key: ${{ secrets.GCP_CREDENTIALS }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Install Terraform 1.13.1
+        run: |
+          sudo apt-get update && sudo apt-get install -y unzip
+          curl -LO "https://releases.hashicorp.com/terraform/1.13.1/terraform_1.13.1_linux_amd64.zip"
+          unzip terraform_1.13.1_linux_amd64.zip
+          sudo mv terraform /usr/local/bin/
+          terraform -version
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      # ----------------------
+      # MODE = plan
+      # ----------------------
+      - name: Create & Upload Destroy Plan
+        if: ${{ github.event.inputs.mode == 'plan' }}
+        env:
+          GCS_PREFIX: ${{ github.repository }}#${{ github.sha }}
+          DESTROY_PLAN_KEY: ${{ env.DESTROY_SUBPATH }}/destroy.tfplan
+          DESTROY_HASH_KEY: ${{ env.DESTROY_SUBPATH }}/destroy.tfplan.sha256
+        run: |
+          echo "==> terraform validate"
+          terraform validate
+
+          echo "==> terraform plan -destroy"
+          terraform plan -destroy -input=false -var="project_id=${{ secrets.GCP_PROJECT_ID }}" -out=destroy.tfplan
+
+          echo "==> checksum"
+          sha256sum destroy.tfplan | awk '{print $1}' > destroy.tfplan.sha256
+
+          echo "==> upload to gs://${PLAN_BUCKET}/${GCS_PREFIX}/${DESTROY_PLAN_KEY}"
+          gsutil cp destroy.tfplan gs://${PLAN_BUCKET}/${GCS_PREFIX}/${DESTROY_PLAN_KEY}
+          gsutil cp destroy.tfplan.sha256 gs://${PLAN_BUCKET}/${GCS_PREFIX}/${DESTROY_HASH_KEY}
+
+      # ----------------------
+      # MODE = apply
+      # ----------------------
+      - name: Verify Manual Confirmation
+        if: ${{ github.event.inputs.mode == 'apply' }}
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "DESTROY" ]; then
+            echo "Refusing to proceed: you must type DESTROY in the 'confirm' input."
+            exit 1
+          fi
+          echo "Confirmation OK."
+
+      - name: Resolve Commit for Destroy Plan
+        if: ${{ github.event.inputs.mode == 'apply' }}
+        id: commit
+        run: |
+          if [ -n "${{ github.event.inputs.destroy_commit_sha }}" ]; then
+            echo "sha=${{ github.event.inputs.destroy_commit_sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download & Verify Destroy Plan
+        if: ${{ github.event.inputs.mode == 'apply' }}
+        env:
+          USE_PREFIX: ${{ github.repository }}#${{ steps.commit.outputs.sha }}
+          DESTROY_PLAN_KEY: ${{ env.DESTROY_SUBPATH }}/destroy.tfplan
+          DESTROY_HASH_KEY: ${{ env.DESTROY_SUBPATH }}/destroy.tfplan.sha256
+        run: |
+          echo "==> downloading from gs://${PLAN_BUCKET}/${USE_PREFIX}/${DESTROY_PLAN_KEY}"
+          gsutil cp gs://${PLAN_BUCKET}/${USE_PREFIX}/${DESTROY_PLAN_KEY} ./destroy.tfplan
+          gsutil cp gs://${PLAN_BUCKET}/${USE_PREFIX}/${DESTROY_HASH_KEY} ./destroy.tfplan.sha256
+
+          echo "==> verifying checksum"
+          DOWN_HASH=$(sha256sum destroy.tfplan | awk '{print $1}')
+          EXP_HASH=$(cat destroy.tfplan.sha256)
+          if [ "$DOWN_HASH" != "$EXP_HASH" ]; then
+            echo "Checksum mismatch! expected=$EXP_HASH got=$DOWN_HASH"
+            exit 1
+          fi
+          echo "Checksum OK."
+
+      - name: Apply Destroy Plan
+        if: ${{ github.event.inputs.mode == 'apply' }}
+        run: |
+          echo "==> terraform apply (destroy plan)"
+          terraform apply -input=false destroy.tfplan
