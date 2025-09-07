@@ -1,0 +1,56 @@
+name: tf-plan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  PLAN_BUCKET: plan-bucket-zaf-gcp
+  PLAN_PREFIX: ${{ github.repository }}#${{ github.sha }}
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Setup Terraform 1.13.1
+        run: |
+          sudo apt-get update && sudo apt-get install -y unzip
+          curl -LO "https://releases.hashicorp.com/terraform/1.13.1/terraform_1.13.1_linux_amd64.zip"
+          unzip terraform_1.13.1_linux_amd64.zip
+          sudo mv terraform /usr/local/bin/
+          terraform -version
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -input=false -out=plan.tfplan
+
+      - name: Checksum plan
+        run: sha256sum plan.tfplan | awk '{print $1}' > plan.tfplan.sha256
+
+      - name: Upload plan & checksum to GCS
+        run: |
+          gsutil cp plan.tfplan gs://${PLAN_BUCKET}/${PLAN_PREFIX}/plan.tfplan
+          gsutil cp plan.tfplan.sha256 gs://${PLAN_BUCKET}/${PLAN_PREFIX}/plan.tfplan.sha256
