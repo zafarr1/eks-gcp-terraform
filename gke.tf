@@ -12,7 +12,7 @@ resource "google_compute_subnetwork" "subnet" {
 
 resource "google_container_cluster" "primary" {
   name                     = var.cluster_name
-  location                 = var.region
+  location                 = "asia-east1-a"
   remove_default_node_pool = true
   initial_node_count       = 1
   network                  = google_compute_network.vpc.id
@@ -22,7 +22,7 @@ resource "google_container_cluster" "primary" {
 
 resource "google_container_node_pool" "primary_nodes" {
   name               = "${var.cluster_name}-node-pool"
-  location           = var.region
+  location           = "asia-east1-a"
   cluster            = google_container_cluster.primary.name
   initial_node_count = 1
 

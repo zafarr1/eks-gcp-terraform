@@ -6,7 +6,7 @@ variable "project_id" {
 variable "region" {
   description = "Region for GKE cluster"
   type        = string
-  default     = "asia-east1-a"
+  default     = "us-central1"
 }
 
 variable "cluster_name" {
