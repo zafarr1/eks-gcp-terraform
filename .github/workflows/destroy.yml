@@ -24,7 +24,7 @@ permissions:
   contents: read
 
 env:
-  PLAN_BUCKET: tf-plan-bucket-zaf-gcp
+  PLAN_BUCKET: plan-bucket-zaf-gcp
   DESTROY_SUBPATH: destroy
 
 jobs:
