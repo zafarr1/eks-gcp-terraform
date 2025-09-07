@@ -26,7 +26,6 @@ jobs:
   # PLAN
   # -------------------------------
   plan:
-    if: ${{ github.event.inputs.action == 'plan' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -118,7 +117,6 @@ jobs:
   # DESTROY PLAN
   # -------------------------------
   destroy-plan:
-    if: ${{ github.event.inputs.action == 'destroy-plan' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
