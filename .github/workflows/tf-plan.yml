@@ -45,7 +45,7 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan
-        run: terraform plan -input=false -out=plan.tfplan
+        run: terraform plan -input=false -var="project_id=${{ secrets.GCP_PROJECT_ID }}" -out=plan.tfplan
 
       - name: Checksum plan
         run: sha256sum plan.tfplan | awk '{print $1}' > plan.tfplan.sha256
