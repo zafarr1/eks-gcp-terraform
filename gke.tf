@@ -13,7 +13,7 @@ resource "google_compute_subnetwork" "subnet" {
 resource "google_container_cluster" "primary" {
   name                     = var.cluster_name
   location                 = "us-central1-f"
-  deletion_protection = false
+  deletion_protection      = false
   remove_default_node_pool = true
   initial_node_count       = 1
   network                  = google_compute_network.vpc.id
