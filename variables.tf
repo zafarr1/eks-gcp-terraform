@@ -20,9 +20,3 @@ variable "kubernetes_version" {
   type        = string
   default     = "1.33"
 }
-
-variable "node_count" {
-  description = "Number of nodes"
-  type        = number
-  default     = 2
-}
