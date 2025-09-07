@@ -24,11 +24,11 @@ resource "google_container_node_pool" "primary_nodes" {
   name               = "${var.cluster_name}-node-pool"
   location           = var.region
   cluster            = google_container_cluster.primary.name
-  initial_node_count = 2 # small number to fit SSD quota
+  initial_node_count = 1
 
   node_config {
     machine_type = "e2-micro"
-    disk_size_gb = 50 # small SSD to fit quota
+    disk_size_gb = 25
     oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
     preemptible  = true
   }
