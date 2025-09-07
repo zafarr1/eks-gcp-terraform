@@ -62,7 +62,7 @@ jobs:
       - name: Create & Upload Destroy Plan
         if: ${{ github.event.inputs.mode == 'plan' }}
         env:
-          GCS_PREFIX: ${{ github.repository }}#${{ github.sha }}
+          GCS_PREFIX: ${{ github.repository }}${{ github.sha }}
           DESTROY_PLAN_KEY: ${{ env.DESTROY_SUBPATH }}/destroy.tfplan
           DESTROY_HASH_KEY: ${{ env.DESTROY_SUBPATH }}/destroy.tfplan.sha256
         run: |
@@ -104,7 +104,7 @@ jobs:
       - name: Download & Verify Destroy Plan
         if: ${{ github.event.inputs.mode == 'apply' }}
         env:
-          USE_PREFIX: ${{ github.repository }}#${{ steps.commit.outputs.sha }}
+          USE_PREFIX: ${{ github.repository }}${{ steps.commit.outputs.sha }}
           DESTROY_PLAN_KEY: ${{ env.DESTROY_SUBPATH }}/destroy.tfplan
           DESTROY_HASH_KEY: ${{ env.DESTROY_SUBPATH }}/destroy.tfplan.sha256
         run: |
