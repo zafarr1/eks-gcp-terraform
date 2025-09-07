@@ -12,7 +12,7 @@ variable "region" {
 variable "cluster_name" {
   description = "Cluster name"
   type        = string
-  default     = "demo-gke"
+  default     = "gke-zaf-tf"
 }
 
 variable "kubernetes_version" {
