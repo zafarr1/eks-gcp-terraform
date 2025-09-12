@@ -1,4 +1,4 @@
-# Role definition (permissions)
+# Role in dev namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -7,13 +7,13 @@ metadata:
 rules:
 - apiGroups: [""]
   resources: ["pods", "pods/log"]
-  verbs: ["get", "list", "watch"]   # view pods + logs
+  verbs: ["get", "list", "watch"]
 - apiGroups: ["apps"]
   resources: ["deployments"]
   verbs: ["create", "get", "list", "watch"]
 
 ---
-# Bind role to dev-user in dev namespace
+# Bind dev-user to role in dev namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -21,7 +21,7 @@ metadata:
   namespace: dev
 subjects:
 - kind: User
-  name: dev-user     # IAM user identity here
+  name: dev-user@artful-host-471306-s1.iam.gserviceaccount.com
   apiGroup: rbac.authorization.k8s.io
 roleRef:
   kind: Role
@@ -29,7 +29,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 
 ---
-# Repeat same role and binding in qa namespace
+# Same Role in qa namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -44,6 +44,7 @@ rules:
   verbs: ["create", "get", "list", "watch"]
 
 ---
+# Bind dev-user to role in qa namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -51,7 +52,7 @@ metadata:
   namespace: qa
 subjects:
 - kind: User
-  name: dev-user
+  name: dev-user@artful-host-471306-s1.iam.gserviceaccount.com
   apiGroup: rbac.authorization.k8s.io
 roleRef:
   kind: Role
